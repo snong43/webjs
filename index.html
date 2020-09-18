@@ -4,7 +4,6 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Cryptography Example</title>
-	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -16,7 +15,11 @@
 		
     var publicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApLNqYvq4umpvqDzXDqpBdkKgKxaQyXO3Dfgy4xg3f3VkrfS7tjvSpwGVfxREynulZ3HSU7MPbjM1w66PdmbWpAngEAzK4P2VPqaJ1Ni6k0+7YTBQRhWz/AQR7bEg9MCjeBPk3h+Enu4qsZ7f2Z3su1CAv1r6sdhOAKnpvZ32ZLEWsLq1iwcXS/Uygv4XM0JpB0VMvl+KUp81YAVe0PoRiYgKXXdxO2Sdm4uLg7Mls1f234DLBVW18hs0vZCpatqJ6V64FnvgHaKfvRDEyk69gGc5m+XXjCE73DIcPNOCHxBIkSZkIRskALys4S5ARvJjRKpGImUQ5mOFj5uaTrbQ8wIDAQAB";
     var aesData;
-    var extendedData;
+	var extendedData;
+	var sessionKey = "";
+	var dataPayment = {};
+	var hmacSrc = "";
+	var cspaySignature = "";
 
 		function encodeBase64() {
 			var input = document.getElementById('inputEncode');
@@ -37,13 +40,17 @@
 		function encryptAES256() {
 
 			var inputCipher = document.getElementById('inputEncAES256');
-			var keyPassword = document.getElementById('passwordEncAES256');
+		//	var keyPassword = document.getElementById('passwordEncAES256');
 			var output = document.getElementById('outputEncAES256');
-
-			var ciphertext = aesGcmEncrypt(inputCipher.value, keyPassword.value)
+			sessionKey = generateSessionKey(50);
+			var ciphertext = aesGcmEncrypt(inputCipher.value, sessionKey)
 			.then(
 				function (ciphertext){
 					output.value = ciphertext;
+
+				//	output.value = JSON.stringify(ciphertext);
+						aesData = ciphertext;
+
 				} 
 			);
 		}
@@ -63,68 +70,52 @@
 		}
 
 		function rsaEncrypt() {
-    //  encryptAES256();
+			// Fix Test Data
+			document.getElementById('inputEncAES256').value = 
+			"{\"businessDate\":\"2020101\",\"edcIp\":\"111.122.121.33\",\"shiftNumber\":\"2\",\"systemDateTime\":\"20200101093016\",\"terminalId\":\"20050101\",\"storeId\":\"396\",\"referenceCode\":\"20095861220\",\"gatewayMID\":\"2E7D1K9901\"}";
+			document.getElementById('passwordEncAES256').value = sessionKey;
+
+
+			console.log("SessionKey = " + sessionKey);
+			encryptAES256();
 			importPublicKeyAndEncrypt();
 		}
 
 		async function importPublicKeyAndEncrypt() {
 			var inputCipher = document.getElementById('');
 
-      const plaintext = 'This text will be encoded UTF8 and may contain special characters like § and €.';
+			const plaintext = 'This text will be encoded UTF8 and may contain special characters like § and €.';
 
-      try {
-        const pub = await importPublicKey(publicKey);
-        const encrypted = await encryptRSA(pub, new TextEncoder().encode(plaintext));
-        const encryptedBase64 = window.btoa(ab2str(encrypted));
+			try {
+				const pub = await importPublicKey(publicKey);
+				const encrypted = await encryptRSA(pub, new TextEncoder().encode(plaintext));
+				const encryptedBase64 = window.btoa(ab2str(encrypted));
 
+				setTimeout(() => {
+						dataPayment ={
+							encryptedPaymentData: aesData,
+							encryptedSessionKey: encryptedBase64
+						};
+						hmacSrc = aesData+aesData ;
+						cspaySignature = hMacSha256(hmacSrc, sessionKey);
+					}, 200);
+			} catch (error) {
+				console.log(error);
+			}
+				}
 
-        // xxxxx
-        setTimeout(() => console.log(aesData + encryptedBase64), 200);
-
-
-        // console.log(encryptedBase64.replace(/(.{64})/g, "$1\n"));
-      } catch (error) {
-        console.log(error);
-      }
+				async function importPublicKey(spkiPem) {
+					return await window.crypto.subtle.importKey(
+						"spki",
+						getSpkiDer(spkiPem),
+						{
+							name: "RSA-OAEP",
+							hash: "SHA-256",
+						},
+						true,
+						["encrypt"]
+					);
 		}
-
-		async function importPublicKey(spkiPem) {
-			return await window.crypto.subtle.importKey(
-				"spki",
-				getSpkiDer(spkiPem),
-				{
-					name: "RSA-OAEP",
-					hash: "SHA-256",
-				},
-				true,
-				["encrypt"]
-			);
-		}
-
-
-		window.crypto.subtle.importKey(
-			"jwk", //can be "jwk" or "raw"
-			{   //this is an example jwk key, "raw" would be an ArrayBuffer
-				kty: "oct",
-				k: "Y0zt37HgOx-BY7SQjYVmrqhPkO44Ii2Jcb9yydUDPfE",
-				alg: "A256GCM",
-				ext: true,
-			},
-			{   //this is the algorithm options
-				name: "AES-GCM",
-			},
-			false, //whether the key is extractable (i.e. can be used in exportKey)
-			["encrypt", "decrypt"] //can "encrypt", "decrypt", "wrapKey", or "unwrapKey"
-		)
-			.then(function (key) {
-				//returns the symmetric key
-				console.log(key);
-			})
-			.catch(function (err) {
-				console.error(err);
-			});
-
-
 
 
 		async function encryptRSA(key, plaintext) {
@@ -151,7 +142,7 @@
 		//
 
 		// https://stackoverflow.com/a/11058858
-		function str2ab(str) {
+		function str2ab(str) {		// String to arrayBuffer
 			const buf = new ArrayBuffer(str.length);
 			const bufView = new Uint8Array(buf);
 			for (let i = 0, strLen = str.length; i < strLen; i++) {
@@ -160,7 +151,7 @@
 			return buf;
 		}
 
-		function ab2str(buf) {
+		function ab2str(buf) {		// arrayBuffer to String
 			return String.fromCharCode.apply(null, new Uint8Array(buf));
 		}
 
@@ -205,6 +196,70 @@
 
 			return plaintext;                                                                   // return the plaintext
 		}
+
+		function generateSessionKey(keyLength) {
+			var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz*&-%/!?+=()";
+			var randomstring = "";
+
+			for (var i = 0; i < keyLength; i++) {
+			var rnum = Math.floor(Math.random() * chars.length);
+			randomstring += chars.substring(rnum, rnum + 1);
+			if (randomstring.indexOf(" ") != -1) {
+				randomstring = randomstring.replace(/\s/g, "");
+				keyLength += 1;
+				}
+			}
+			return randomstring;
+		}
+
+		function hMacSha256(hmacSrc, sessionKey){
+			var enc = new TextEncoder("utf-8");
+
+			window.crypto.subtle.importKey(
+				"raw", // raw format of the key - should be Uint8Array
+				enc.encode(sessionKey),
+				{ // algorithm details
+					name: "HMAC",
+					hash: {name: "SHA-256"}
+				},
+				false, // export = false
+				["sign", "verify"] // what this key can do
+			).then( key => {
+				window.crypto.subtle.sign(
+					"HMAC",
+					key,
+					enc.encode(hmacSrc)
+				).then(signature => {
+					var b = new Uint8Array(signature);
+					var str = Array.prototype.map.call(b, x => ('00'+x.toString(16)).slice(-2)).join("");
+					var hmacBase64 = window.btoa(str);
+					cspaySignature = hmacBase64;
+
+					setTimeout(() => {
+						 
+						console.log("=========dataPayment=======");
+						console.log(dataPayment);
+
+						console.log("=========HmacSrc=======");
+						console.log(hmacSrc);
+						console.log("=======cspaySignature========");
+						console.log(cspaySignature);
+
+						var word = JSON.stringify(dataPayment);
+						var encText = window.btoa(word);
+
+						console.log("=======word========");
+						console.log(word);
+
+						console.log("=======encText========");
+						console.log(encText);
+					}, 200);
+					
+
+
+				});
+			});
+		}
 	</script>
 </head>
 
@@ -246,14 +301,14 @@
 				<div class="panel-body">
 
 
-					<div class="form-group">
+				<div class="form-group">
 						<label for="passwordEncAES256">Password:</label>
-						<input size=30 type="text" id="passwordEncAES256" class="form-control" value="pass" />
-					</div>
+						<input size=30 type="text" id="passwordEncAES256" class="form-control" value="" />
+					</div>  
 
 					<div class="form-group">
 						<label for="inputEncAES256">Input:</label>
-						<input size=60 type="text" id="inputEncAES256" class="form-control" value="data" />
+						<input size=60 type="text" id="inputEncAES256" class="form-control" value="" />
 					</div>
 
 					<div class="form-group text-center">
