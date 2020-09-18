@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Cryptography Example</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+	<script language="JavaScript" src="md5.js"></script>
+	<script language="JavaScript" src="Base64.js"></script>
+	<script>
+
+		
+    var publicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApLNqYvq4umpvqDzXDqpBdkKgKxaQyXO3Dfgy4xg3f3VkrfS7tjvSpwGVfxREynulZ3HSU7MPbjM1w66PdmbWpAngEAzK4P2VPqaJ1Ni6k0+7YTBQRhWz/AQR7bEg9MCjeBPk3h+Enu4qsZ7f2Z3su1CAv1r6sdhOAKnpvZ32ZLEWsLq1iwcXS/Uygv4XM0JpB0VMvl+KUp81YAVe0PoRiYgKXXdxO2Sdm4uLg7Mls1f234DLBVW18hs0vZCpatqJ6V64FnvgHaKfvRDEyk69gGc5m+XXjCE73DIcPNOCHxBIkSZkIRskALys4S5ARvJjRKpGImUQ5mOFj5uaTrbQ8wIDAQAB";
+    var aesData;
+    var extendedData;
+
+		function encodeBase64() {
+			var input = document.getElementById('inputEncode');
+			var output = document.getElementById('outputEncode');
+			output.value = Base64.encode(input.value);
+		}
+		function decodeBase64() {
+			var input = document.getElementById('inputDecode');
+			var output = document.getElementById('outputDecode');
+			output.value = Base64.decode(input.value);
+		}
+		function encryptMD5() {
+			var input = document.getElementById('inputMD5');
+			var output = document.getElementById('outputMD5');
+			output.value = calcMD5(input.value);
+		}
+
+		function encryptAES256() {
+
+			var inputCipher = document.getElementById('inputEncAES256');
+			var keyPassword = document.getElementById('passwordEncAES256');
+			var output = document.getElementById('outputEncAES256');
+
+			var ciphertext = aesGcmEncrypt(inputCipher.value, keyPassword.value)
+			.then(
+				function (ciphertext){
+					output.value = ciphertext;
+				} 
+			);
+		}
+
+		function decryptAES256() {
+			var inputCipher = document.getElementById('inputDecAES256');
+			var keyPassword = document.getElementById('passwordDecAES256');
+			var output = document.getElementById('outputDecAES256');
+			var y = "";
+		
+			var ciphertext = aesGcmDecrypt(inputCipher.value, keyPassword.value)
+			.then(
+				function (ciphertext){
+					output.value = ciphertext;
+				} 
+			);
+		}
+
+		function rsaEncrypt() {
+    //  encryptAES256();
+			importPublicKeyAndEncrypt();
+		}
+
+		async function importPublicKeyAndEncrypt() {
+			var inputCipher = document.getElementById('');
+
+      const plaintext = 'This text will be encoded UTF8 and may contain special characters like § and €.';
+
+      try {
+        const pub = await importPublicKey(publicKey);
+        const encrypted = await encryptRSA(pub, new TextEncoder().encode(plaintext));
+        const encryptedBase64 = window.btoa(ab2str(encrypted));
+
+
+        // xxxxx
+        setTimeout(() => console.log(aesData + encryptedBase64), 200);
+
+
+        // console.log(encryptedBase64.replace(/(.{64})/g, "$1\n"));
+      } catch (error) {
+        console.log(error);
+      }
+		}
+
+		async function importPublicKey(spkiPem) {
+			return await window.crypto.subtle.importKey(
+				"spki",
+				getSpkiDer(spkiPem),
+				{
+					name: "RSA-OAEP",
+					hash: "SHA-256",
+				},
+				true,
+				["encrypt"]
+			);
+		}
+
+
+		window.crypto.subtle.importKey(
+			"jwk", //can be "jwk" or "raw"
+			{   //this is an example jwk key, "raw" would be an ArrayBuffer
+				kty: "oct",
+				k: "Y0zt37HgOx-BY7SQjYVmrqhPkO44Ii2Jcb9yydUDPfE",
+				alg: "A256GCM",
+				ext: true,
+			},
+			{   //this is the algorithm options
+				name: "AES-GCM",
+			},
+			false, //whether the key is extractable (i.e. can be used in exportKey)
+			["encrypt", "decrypt"] //can "encrypt", "decrypt", "wrapKey", or "unwrapKey"
+		)
+			.then(function (key) {
+				//returns the symmetric key
+				console.log(key);
+			})
+			.catch(function (err) {
+				console.error(err);
+			});
+
+
+
+
+		async function encryptRSA(key, plaintext) {
+			let encrypted = await window.crypto.subtle.encrypt(
+				{
+					name: "RSA-OAEP"
+				},
+				key,
+				plaintext
+			);
+			return encrypted;
+		}
+
+		function getSpkiDer(spkiPem) {
+			const pemHeader = "";
+			const pemFooter = "";
+			var pemContents = spkiPem.substring(pemHeader.length, spkiPem.length - pemFooter.length);
+			var binaryDerString = window.atob(pemContents);
+			return str2ab(binaryDerString);
+		}
+
+		//
+		// Helper
+		//
+
+		// https://stackoverflow.com/a/11058858
+		function str2ab(str) {
+			const buf = new ArrayBuffer(str.length);
+			const bufView = new Uint8Array(buf);
+			for (let i = 0, strLen = str.length; i < strLen; i++) {
+				bufView[i] = str.charCodeAt(i);
+			}
+			return buf;
+		}
+
+		function ab2str(buf) {
+			return String.fromCharCode.apply(null, new Uint8Array(buf));
+		}
+
+		async function aesGcmEncrypt(plaintext, password) {
+			const pwUtf8 = new TextEncoder().encode(password);                                 // encode password as UTF-8
+			const pwHash = await crypto.subtle.digest('SHA-256', pwUtf8);                      // hash the password
+
+			const iv = crypto.getRandomValues(new Uint8Array(12));                             // get 96-bit random iv
+
+			const alg = { name: 'AES-GCM', iv: iv };                                           // specify algorithm to use
+
+			const key = await crypto.subtle.importKey('raw', pwHash, alg, false, ['encrypt']); // generate key from pw
+
+			const ptUint8 = new TextEncoder().encode(plaintext);                               // encode plaintext as UTF-8
+			const ctBuffer = await crypto.subtle.encrypt(alg, key, ptUint8);                   // encrypt plaintext using key
+
+			const ctArray = Array.from(new Uint8Array(ctBuffer));                              // ciphertext as byte array
+			const ctStr = ctArray.map(byte => String.fromCharCode(byte)).join('');             // ciphertext as string
+			const ctBase64 = btoa(ctStr);                                                      // encode ciphertext as base64
+
+			const ivHex = Array.from(iv).map(b => ('00' + b.toString(16)).slice(-2)).join(''); // iv as hex string
+
+			return ivHex + ctBase64;                                                             // return iv+ciphertext
+		}
+
+		async function aesGcmDecrypt(ciphertext, password) {
+			const pwUtf8 = new TextEncoder().encode(password);                                  // encode password as UTF-8
+			const pwHash = await crypto.subtle.digest('SHA-256', pwUtf8);                       // hash the password
+
+			const iv = ciphertext.slice(0, 24).match(/.{2}/g).map(byte => parseInt(byte, 16));   // get iv from ciphertext
+
+			const alg = { name: 'AES-GCM', iv: new Uint8Array(iv) };                            // specify algorithm to use
+
+			const key = await crypto.subtle.importKey('raw', pwHash, alg, false, ['decrypt']);  // use pw to generate key
+
+			const ctStr = atob(ciphertext.slice(24));                                           // decode base64 ciphertext
+			const ctUint8 = new Uint8Array(ctStr.match(/[\s\S]/g).map(ch => ch.charCodeAt(0))); // ciphertext as Uint8Array
+			// note: why doesn't ctUint8 = new TextEncoder().encode(ctStr) work?
+
+			const plainBuffer = await crypto.subtle.decrypt(alg, key, ctUint8);                 // decrypt ciphertext using key
+			const plaintext = new TextDecoder().decode(plainBuffer);                            // decode password from UTF-8
+
+			return plaintext;                                                                   // return the plaintext
+		}
+	</script>
+</head>
+
+<body>
+	<div class="jumbotron text-center">
+		<h1>Cryptography Example</h1>
+		<p>AES-GCM / RSA-OAEP</p>
+	</div>
+	<div class="container">
+
+		<div class="panel-group">
+			<div class="panel panel-default">
+				<div class="panel-heading">RSA Encrypt</div>
+				<div class="panel-body">
+
+					<div class="form-group">
+						<label for="passwordRsa">Password:</label>
+						<input size=30 type="text" id="passwordRsa" class="form-control" />
+					</div>
+
+					<div class="form-group">
+						<label for="rsaIn">Input:</label>
+						<input size=60 type="text" id="rsaIn" class="form-control" />
+					</div>
+
+					<div class="form-group text-center">
+						<button type="button" class="btn btn-default" onclick="rsaEncrypt()"
+							class="form-control">Encrypt</button>
+					</div>
+					<div class="form-group">
+						<label for="rsaOut">Output:</label>
+						<input size=60 type="text" id="rsaOut" class="form-control" />
+					</div>
+				</div>
+			</div>
+
+			<div class="panel panel-primary">
+				<div class="panel-heading">AES Encrypt</div>
+				<div class="panel-body">
+
+
+					<div class="form-group">
+						<label for="passwordEncAES256">Password:</label>
+						<input size=30 type="text" id="passwordEncAES256" class="form-control" value="pass" />
+					</div>
+
+					<div class="form-group">
+						<label for="inputEncAES256">Input:</label>
+						<input size=60 type="text" id="inputEncAES256" class="form-control" value="data" />
+					</div>
+
+					<div class="form-group text-center">
+						<button type="button" class="btn btn-primary" onclick="encryptAES256()"
+							class="form-control">Encrypt</button>
+					</div>
+					<div class="form-group">
+						<label for="outputEncAES256">Output:</label>
+						<input size=60 type="text" id="outputEncAES256" class="form-control" />
+					</div>
+
+				</div>
+			</div>
+
+			<div class="panel panel-success">
+				<div class="panel-heading">AES Decrypt</div>
+				<div class="panel-body">
+
+					<div class="form-group">
+						<label for="passwordDecAES256">Password:</label>
+						<input size=30 type="text" id="passwordDecAES256" class="form-control" />
+					</div>
+
+					<div class="form-group">
+						<label for="inputDecAES256">Input:</label>
+						<input size=60 type="text" id="inputDecAES256" class="form-control" />
+					</div>
+
+					<div class="form-group text-center">
+						<button type="button" class="btn btn-success" onclick="decryptAES256()"
+							class="form-control">Encrypt</button>
+					</div>
+					<div class="form-group">
+						<label for="outputDecAES256">Output:</label>
+						<input size=60 type="text" id="outputDecAES256" class="form-control" />
+					</div>
+
+				</div>
+			</div>
+
+
+			<div class="panel panel-warning">
+				<div class="panel-heading">Base64 Encrypt</div>
+				<div class="panel-body">
+
+					<div class="form-group">
+						<label for="inputEncode">Input:</label>
+						<input size=60 type="text" id="inputEncode" class="form-control" />
+					</div>
+
+					<div class="form-group text-center">
+						<button type="button" class="btn btn-warning" onclick="encodeBase64()"
+							class="form-control">Encrypt</button>
+					</div>
+					<div class="form-group">
+						<label for="outputEncode">Output:</label>
+						<input size=60 type="text" id="outputEncode" class="form-control" />
+					</div>
+
+				</div>
+			</div>
+
+			<div class="panel panel-danger">
+				<div class="panel-heading">Base64 Decrypt</div>
+				<div class="panel-body">
+
+					<div class="form-group">
+						<label for="inputDecode">Input:</label>
+						<input size=60 type="text" id="inputDecode" class="form-control" />
+					</div>
+
+					<div class="form-group text-center">
+						<button type="button" class="btn btn-danger" onclick="decodeBase64()"
+							class="form-control">Encrypt</button>
+					</div>
+					<div class="form-group">
+						<label for="outputDecode">Output:</label>
+						<input size=60 type="text" id="outputDecode" class="form-control" />
+					</div>
+
+				</div>
+			</div>
+
+			<div class="panel panel-info">
+				<div class="panel-heading">Encrypt MD5</div>
+				<div class="panel-body">
+
+					<div class="form-group">
+						<label for="inputMD5">Input:</label>
+						<input size=60 type="text" id="inputMD5" class="form-control" />
+					</div>
+
+					<div class="form-group text-center">
+						<button type="button" class="btn btn-info" onclick="encryptMD5()"
+							class="form-control">Encrypt</button>
+					</div>
+					<div class="form-group">
+						<label for="outputMD5">Output:</label>
+						<input size=60 type="text" id="outputMD5" class="form-control" />
+					</div>
+
+				</div>
+			</div>
+			<hr width="40%" align="center">
+			<hr width="40%" align="center">
+			</br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br>
+			HMAC </br></br>
+			Data : <textarea rows="4" cols="100" id="hmacData"></textarea></br></br>
+			Data Key : <input size=60 type="text" id="hmacDataKey" />&nbsp;&nbsp;<button onclick="hmac()">Hash
+				it!</button></br></br>
+			Output : <input size=100 type="text" id="hmacOut" /></br></br></br>
+
+			Data Payment </br></br>
+			Encrypt Data : <input size=60 type="text" id="enData" />&nbsp;&nbsp;</br></br>
+			Encrypt RandomKey : <textarea rows="4" cols="100" id="enRandomKey"></textarea>&nbsp;&nbsp;<button
+				onclick="words()">Encrypt</button></br></br>
+			Output : <textarea rows="4" cols="100" id="dataPaymentOut"></textarea></br></br></br>
+
+
+
+
+		</div>
+</body>
+
+</html>
