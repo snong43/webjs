@@ -8,34 +8,16 @@
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-	<script language="JavaScript" src="md5.js"></script>
-	<script language="JavaScript" src="Base64.js"></script>
 	<script>
 
-		
     var publicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApLNqYvq4umpvqDzXDqpBdkKgKxaQyXO3Dfgy4xg3f3VkrfS7tjvSpwGVfxREynulZ3HSU7MPbjM1w66PdmbWpAngEAzK4P2VPqaJ1Ni6k0+7YTBQRhWz/AQR7bEg9MCjeBPk3h+Enu4qsZ7f2Z3su1CAv1r6sdhOAKnpvZ32ZLEWsLq1iwcXS/Uygv4XM0JpB0VMvl+KUp81YAVe0PoRiYgKXXdxO2Sdm4uLg7Mls1f234DLBVW18hs0vZCpatqJ6V64FnvgHaKfvRDEyk69gGc5m+XXjCE73DIcPNOCHxBIkSZkIRskALys4S5ARvJjRKpGImUQ5mOFj5uaTrbQ8wIDAQAB";
     var aesData;
+	var aesDecryptData;
 	var extendedData;
 	var sessionKey = "";
 	var dataPayment = {};
 	var hmacSrc = "";
 	var cspaySignature = "";
-
-		function encodeBase64() {
-			var input = document.getElementById('inputEncode');
-			var output = document.getElementById('outputEncode');
-			output.value = Base64.encode(input.value);
-		}
-		function decodeBase64() {
-			var input = document.getElementById('inputDecode');
-			var output = document.getElementById('outputDecode');
-			output.value = Base64.decode(input.value);
-		}
-		function encryptMD5() {
-			var input = document.getElementById('inputMD5');
-			var output = document.getElementById('outputMD5');
-			output.value = calcMD5(input.value);
-		}
 
 		function encryptAES256() {
 
@@ -45,7 +27,7 @@
 			sessionKey = generateSessionKey(50);
 			var ciphertext = aesGcmEncrypt(inputCipher.value, sessionKey)
 			.then(
-				function (ciphertext){
+				 (ciphertext)=>{
 					output.value = ciphertext;
 
 				//	output.value = JSON.stringify(ciphertext);
@@ -53,6 +35,7 @@
 
 				} 
 			);
+			return aesData;
 		}
 
 		function decryptAES256() {
@@ -63,32 +46,32 @@
 		
 			var ciphertext = aesGcmDecrypt(inputCipher.value, keyPassword.value)
 			.then(
-				function (ciphertext){
+				(ciphertext)=>{
 					output.value = ciphertext;
+					aesDecryptData = ciphertext;
 				} 
 			);
+			return aesDecryptData;
 		}
 
 		function rsaEncrypt() {
 			// Fix Test Data
 			document.getElementById('inputEncAES256').value = 
 			"{\"businessDate\":\"2020101\",\"edcIp\":\"111.122.121.33\",\"shiftNumber\":\"2\",\"systemDateTime\":\"20200101093016\",\"terminalId\":\"20050101\",\"storeId\":\"396\",\"referenceCode\":\"20095861220\",\"gatewayMID\":\"2E7D1K9901\"}";
+			
+			encryptAES256();
 			document.getElementById('passwordEncAES256').value = sessionKey;
 
 
 			console.log("SessionKey = " + sessionKey);
-			encryptAES256();
-			importPublicKeyAndEncrypt();
+		
+			importPublicKeyAndEncrypt(sessionKey);
 		}
 
-		async function importPublicKeyAndEncrypt() {
-			var inputCipher = document.getElementById('');
-
-			const plaintext = 'This text will be encoded UTF8 and may contain special characters like § and €.';
-
+		async function importPublicKeyAndEncrypt(sessionKey) {
 			try {
 				const pub = await importPublicKey(publicKey);
-				const encrypted = await encryptRSA(pub, new TextEncoder().encode(plaintext));
+				const encrypted = await encryptRSA(pub, new TextEncoder().encode(sessionKey));
 				const encryptedBase64 = window.btoa(ab2str(encrypted));
 
 				setTimeout(() => {
@@ -253,6 +236,7 @@
 
 						console.log("=======encText========");
 						console.log(encText);
+						document.getElementById("rsaOut").value = encText;
 					}, 200);
 					
 
@@ -260,6 +244,71 @@
 				});
 			});
 		}
+
+	//	function rsaOaepDecrypt(privateKey, ciphertext) {
+			function rsaOaepDecrypt() {
+
+			var ciphertext = document.getElementById("text1").value;
+			var privateKey = document.getElementById("private").value;
+        decryptRsaOeapData = importPrivateKeyAndDecrypt(privateKey ,ciphertext).then(
+			(x) => {
+
+				decryptRsaOeapData = x;
+				console.log(decryptRsaOeapData);
+
+			}
+		);
+
+		console.log(decryptRsaOeapData);
+        return decryptRsaOeapData;
+    }
+        
+    async function importPrivateKeyAndDecrypt(privateKey ,ciphertext) {
+
+        // A ciphertext produced with the first code
+    //    const ciphertextB64 = "q/g0YQ+CbFwCb9QxAeKk/X8vjUUKpBGCVe6OvFoBlTfRF24BQlWpLFhxVQv+Gn29CzAXfSJjU+C8taYXQ4wofyOaRx0etkATDbmIV1gVdxNnqVKTx2RSj1L3uACZ3aWYIGRjtaBMBNAW81mPEjxEWCvRW3uI/rOn3LAc4N05CkofOnsIpaafgcEjhZoTxp1Dpkm328bwRJ3g1Dn+vQk6JBiAXSiF7GHvMvnD6q+CQiO1dcv0lrrXlibE8/P2LHWpqQ9g5xWWUHl70q2WB+IxLgX9OkqX8XQ1GHjP5EaQFfo1HerBpa+Uf5DaienI/XT4n64DWM1S7t0dbhFDskc9HQ==";
+            
+        try {
+            const priv = await importPrivateKey(privateKey);
+            const decrypted = await decryptRSA(priv, str2ab(window.atob(ciphertext)));
+            console.log(decrypted);
+        } catch(error) {
+            console.log(error);
+        }
+    }
+
+
+    async function importPrivateKey(pkcs8Pem) {     
+        return await window.crypto.subtle.importKey(
+            "pkcs8",
+            getPkcs8Der(pkcs8Pem),
+            {
+                name: "RSA-OAEP",
+                hash: "SHA-256",
+            },
+            true,
+            ["decrypt"]
+        );
+    }
+
+    async function decryptRSA(key, ciphertext) {
+        let decrypted = await window.crypto.subtle.decrypt(
+            {
+                name: "RSA-OAEP"
+            },
+            key,
+            ciphertext
+        );
+        return new TextDecoder().decode(decrypted);
+    }
+
+    function getPkcs8Der(pkcs8Pem){
+        const pemHeader = "-----BEGIN PRIVATE KEY-----";
+        const pemFooter = "-----END PRIVATE KEY-----";
+        var pemContents = pkcs8Pem.substring(pemHeader.length, pkcs8Pem.length - pemFooter.length);
+        var binaryDerString = window.atob(pemContents);
+        return str2ab(binaryDerString); 
+    }
 	</script>
 </head>
 
@@ -271,165 +320,38 @@
 	<div class="container">
 
 		<div class="panel-group">
-			<div class="panel panel-default">
+			<div class="panel panel-primary">
 				<div class="panel-heading">RSA Encrypt</div>
 				<div class="panel-body">
 
-					<div class="form-group">
-						<label for="passwordRsa">Password:</label>
-						<input size=30 type="text" id="passwordRsa" class="form-control" />
-					</div>
-
-					<div class="form-group">
-						<label for="rsaIn">Input:</label>
-						<input size=60 type="text" id="rsaIn" class="form-control" />
-					</div>
-
 					<div class="form-group text-center">
+						<div class="form-group">
+							<label for="inputDecAES256">Private Key:</label>
+							<input size=60 type="text" id="private" class="form-control" value="A4FLeeaJzGm6Gb6LlkVJT1IO7hisBCJEckLFOAGK02E=" />
+						</div>
+	
+					<div class="form-group">
+							<label for="passwordEncAES256">Session Key:</label>
+							<input size=30 type="text" id="passwordEncAES256" class="form-control" value="" />
+						</div>  
+	
+						<div class="form-group">
+							<label for="inputEncAES256">Data:</label>
+							<input size=60 type="text" id="inputEncAES256" class="form-control" value="" />
+						</div>
+						<div class="form-group">
+							<label for="outputEncAES256">Encrypte AES:</label>
+							<input size=60 type="text" id="outputEncAES256" class="form-control" />
+						</div>
 						<button type="button" class="btn btn-default" onclick="rsaEncrypt()"
 							class="form-control">Encrypt</button>
 					</div>
 					<div class="form-group">
-						<label for="rsaOut">Output:</label>
-						<input size=60 type="text" id="rsaOut" class="form-control" />
+						<label for="rsaOut">Encrypt RSA:</label>
+						<textarea class="form-control" id="rsaOut" rows="8"></textarea>
 					</div>
 				</div>
 			</div>
-
-			<div class="panel panel-primary">
-				<div class="panel-heading">AES Encrypt</div>
-				<div class="panel-body">
-
-
-				<div class="form-group">
-						<label for="passwordEncAES256">Password:</label>
-						<input size=30 type="text" id="passwordEncAES256" class="form-control" value="" />
-					</div>  
-
-					<div class="form-group">
-						<label for="inputEncAES256">Input:</label>
-						<input size=60 type="text" id="inputEncAES256" class="form-control" value="" />
-					</div>
-
-					<div class="form-group text-center">
-						<button type="button" class="btn btn-primary" onclick="encryptAES256()"
-							class="form-control">Encrypt</button>
-					</div>
-					<div class="form-group">
-						<label for="outputEncAES256">Output:</label>
-						<input size=60 type="text" id="outputEncAES256" class="form-control" />
-					</div>
-
-				</div>
-			</div>
-
-			<div class="panel panel-success">
-				<div class="panel-heading">AES Decrypt</div>
-				<div class="panel-body">
-
-					<div class="form-group">
-						<label for="passwordDecAES256">Password:</label>
-						<input size=30 type="text" id="passwordDecAES256" class="form-control" />
-					</div>
-
-					<div class="form-group">
-						<label for="inputDecAES256">Input:</label>
-						<input size=60 type="text" id="inputDecAES256" class="form-control" />
-					</div>
-
-					<div class="form-group text-center">
-						<button type="button" class="btn btn-success" onclick="decryptAES256()"
-							class="form-control">Encrypt</button>
-					</div>
-					<div class="form-group">
-						<label for="outputDecAES256">Output:</label>
-						<input size=60 type="text" id="outputDecAES256" class="form-control" />
-					</div>
-
-				</div>
-			</div>
-
-
-			<div class="panel panel-warning">
-				<div class="panel-heading">Base64 Encrypt</div>
-				<div class="panel-body">
-
-					<div class="form-group">
-						<label for="inputEncode">Input:</label>
-						<input size=60 type="text" id="inputEncode" class="form-control" />
-					</div>
-
-					<div class="form-group text-center">
-						<button type="button" class="btn btn-warning" onclick="encodeBase64()"
-							class="form-control">Encrypt</button>
-					</div>
-					<div class="form-group">
-						<label for="outputEncode">Output:</label>
-						<input size=60 type="text" id="outputEncode" class="form-control" />
-					</div>
-
-				</div>
-			</div>
-
-			<div class="panel panel-danger">
-				<div class="panel-heading">Base64 Decrypt</div>
-				<div class="panel-body">
-
-					<div class="form-group">
-						<label for="inputDecode">Input:</label>
-						<input size=60 type="text" id="inputDecode" class="form-control" />
-					</div>
-
-					<div class="form-group text-center">
-						<button type="button" class="btn btn-danger" onclick="decodeBase64()"
-							class="form-control">Encrypt</button>
-					</div>
-					<div class="form-group">
-						<label for="outputDecode">Output:</label>
-						<input size=60 type="text" id="outputDecode" class="form-control" />
-					</div>
-
-				</div>
-			</div>
-
-			<div class="panel panel-info">
-				<div class="panel-heading">Encrypt MD5</div>
-				<div class="panel-body">
-
-					<div class="form-group">
-						<label for="inputMD5">Input:</label>
-						<input size=60 type="text" id="inputMD5" class="form-control" />
-					</div>
-
-					<div class="form-group text-center">
-						<button type="button" class="btn btn-info" onclick="encryptMD5()"
-							class="form-control">Encrypt</button>
-					</div>
-					<div class="form-group">
-						<label for="outputMD5">Output:</label>
-						<input size=60 type="text" id="outputMD5" class="form-control" />
-					</div>
-
-				</div>
-			</div>
-			<hr width="40%" align="center">
-			<hr width="40%" align="center">
-			</br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br></br>
-			HMAC </br></br>
-			Data : <textarea rows="4" cols="100" id="hmacData"></textarea></br></br>
-			Data Key : <input size=60 type="text" id="hmacDataKey" />&nbsp;&nbsp;<button onclick="hmac()">Hash
-				it!</button></br></br>
-			Output : <input size=100 type="text" id="hmacOut" /></br></br></br>
-
-			Data Payment </br></br>
-			Encrypt Data : <input size=60 type="text" id="enData" />&nbsp;&nbsp;</br></br>
-			Encrypt RandomKey : <textarea rows="4" cols="100" id="enRandomKey"></textarea>&nbsp;&nbsp;<button
-				onclick="words()">Encrypt</button></br></br>
-			Output : <textarea rows="4" cols="100" id="dataPaymentOut"></textarea></br></br></br>
-
-
-
-
 		</div>
 </body>
 
