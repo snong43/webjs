@@ -8,6 +8,8 @@
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/node-forge@0.7.0/dist/forge.min.js"></script>
+
 	<script>
 
     var publicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApLNqYvq4umpvqDzXDqpBdkKgKxaQyXO3Dfgy4xg3f3VkrfS7tjvSpwGVfxREynulZ3HSU7MPbjM1w66PdmbWpAngEAzK4P2VPqaJ1Ni6k0+7YTBQRhWz/AQR7bEg9MCjeBPk3h+Enu4qsZ7f2Z3su1CAv1r6sdhOAKnpvZ32ZLEWsLq1iwcXS/Uygv4XM0JpB0VMvl+KUp81YAVe0PoRiYgKXXdxO2Sdm4uLg7Mls1f234DLBVW18hs0vZCpatqJ6V64FnvgHaKfvRDEyk69gGc5m+XXjCE73DIcPNOCHxBIkSZkIRskALys4S5ARvJjRKpGImUQ5mOFj5uaTrbQ8wIDAQAB";
@@ -18,6 +20,8 @@
 	var dataPayment = {};
 	var hmacSrc = "";
 	var cspaySignature = "";
+	var rsa = forge.pki.rsa;
+
 
 		function encryptAES256() {
 
@@ -56,9 +60,7 @@
 
 		function rsaEncrypt() {
 			// Fix Test Data
-			document.getElementById('inputEncAES256').value = 
-			"{\"businessDate\":\"2020101\",\"edcIp\":\"111.122.121.33\",\"shiftNumber\":\"2\",\"systemDateTime\":\"20200101093016\",\"terminalId\":\"20050101\",\"storeId\":\"396\",\"referenceCode\":\"20095861220\",\"gatewayMID\":\"2E7D1K9901\"}";
-			
+			document.getElementById('inputEncAES256').value = "{data: {memID: \"TEST00001\", clientDatetime: \"2020-09-24 01:44:55\"},paymentFormReq: {amt: \"100000\",currency: \"THB\",customerFeeCode: \"\",desc: \"ใบรับชำระ 1600886692\",email: \"\",expDateTrans: \"2020-09-26 01:44:52\",inv: \"1600886692\",lang: \"EN\",memberId: \"TEST00001\",merchantId: \"2E7D1K9901\",name: \"\",paymentMethod: \"CARD\",phone: \"0008683501\",promocode: \"\",queryPaymentType: \"CARD\",shopId: \"396\",urlBack: \"http://127.0.0.1:8181/CodeI/index.php/mainpage\",urlConfirm: \"https://devland.counterservicepay.info/paymentconfirm3.php\",useCspayForm: \"Y\"}}";
 			encryptAES256();
 			document.getElementById('passwordEncAES256').value = sessionKey;
 
@@ -79,9 +81,10 @@
 							encryptedPaymentData: aesData,
 							encryptedSessionKey: encryptedBase64
 						};
+						document.getElementById("rsaOut").value = encryptedBase64;
 						hmacSrc = aesData+aesData ;
 						cspaySignature = hMacSha256(hmacSrc, sessionKey);
-					}, 200);
+					}, 30);
 			} catch (error) {
 				console.log(error);
 			}
@@ -236,7 +239,7 @@
 
 						console.log("=======encText========");
 						console.log(encText);
-						document.getElementById("rsaOut").value = encText;
+						document.getElementById("dataEndBackEnd").value = encText;
 					}, 200);
 					
 
@@ -245,22 +248,19 @@
 			});
 		}
 
-	//	function rsaOaepDecrypt(privateKey, ciphertext) {
-			function rsaOaepDecrypt() {
+	function rsaOaepDecrypt() {
 
-			var ciphertext = document.getElementById("text1").value;
+			var ciphertext = document.getElementById("dataEndBackEnd").value;
 			var privateKey = document.getElementById("private").value;
         decryptRsaOeapData = importPrivateKeyAndDecrypt(privateKey ,ciphertext).then(
 			(x) => {
-
 				decryptRsaOeapData = x;
 				console.log(decryptRsaOeapData);
-
+				document.getElementById("rsaOut_decrypt").value = decryptRsaOeapData;
+				console.log(decryptRsaOeapData);
+				return decryptRsaOeapData;
 			}
 		);
-
-		console.log(decryptRsaOeapData);
-        return decryptRsaOeapData;
     }
         
     async function importPrivateKeyAndDecrypt(privateKey ,ciphertext) {
@@ -309,6 +309,75 @@
         var binaryDerString = window.atob(pemContents);
         return str2ab(binaryDerString); 
     }
+
+
+
+/*
+	// generate an RSA key pair synchronously
+	// *NOT RECOMMENDED*: Can be significantly slower than async and may block
+	// JavaScript execution. Will use native Node.js 10.12.0+ API if possible.
+	var keypair = rsa.generateKeyPair({bits: 2048, e: 0x10001});
+
+	// generate an RSA key pair asynchronously (uses web workers if available)
+	// use workers: -1 to run a fast core estimator to optimize # of workers
+	// *RECOMMENDED*: Can be significantly faster than sync. Will use native
+	// Node.js 10.12.0+ or WebCrypto API if possible.
+	rsa.generateKeyPair({bits: 2048, workers: 2}, function(err, keypair) {
+	// keypair.privateKey, keypair.publicKey
+	});
+
+	let pubKey = forge.pki.publicKeyFromPem(environment.publicKey);
+	let private = forge.pki.privateKeyFromPem(environment.privateKey);
+*/
+	/*
+	let pubKey = forge.pki.publicKeyFromPem(environment.publicKey);
+	let encryptText = pubKey.encrypt(forge.util.encodeUtf8("Some text"));
+
+	let private = forge.pki.privateKeyFromPem(environment.privateKey);
+	let plain = forge.util.decodeUtf8(pk.decrypt(encryptText)); //<-- This text is: "Some text"
+	*/
+
+  var der = forge.util.decode64(publicKey);  //
+  var asn1 = forge.asn1.fromDer(der, false);
+  var cert = forge.pki.certificateFromAsn1(asn1);
+  var publicKey = cert.publicKey;
+
+
+	// sign data using RSASSA-PSS where PSS uses a SHA-1 hash, a SHA-1 based
+	// masking function MGF1, and a 20 byte salt
+	var md = forge.md.sha1.create();
+	md.update('sign this', 'utf8');
+	var pss = forge.pss.create({
+	md: forge.md.sha1.create(),
+	mgf: forge.mgf.mgf1.create(forge.md.sha1.create()),
+	saltLength: 20
+	// optionally pass 'prng' with a custom PRNG implementation
+	// optionalls pass 'salt' with a forge.util.ByteBuffer w/custom salt
+	});
+
+	var bytes = "Hello Wolrd World Data";
+
+	// encrypt data with a public key using RSAES-OAEP/SHA-256/MGF1-SHA-1
+	// compatible with Java's RSA/ECB/OAEPWithSHA-256AndMGF1Padding
+	var encrypted = keypair.publicKey.encrypt(bytes, 'RSA-OAEP', {
+	md: forge.md.sha256.create(),
+	mgf1: {
+		md: forge.md.sha1.create()
+	}
+	});
+/*
+	// decrypt data with a private key using RSAES-OAEP/SHA-256/MGF1-SHA-1
+	// compatible with Java's RSA/ECB/OAEPWithSHA-256AndMGF1Padding
+	var decrypted = keypair.privateKey.decrypt(encrypted, 'RSA-OAEP', {
+	md: forge.md.sha256.create(),
+	mgf1: {
+		md: forge.md.sha1.create()
+	}
+	});
+*/
+	console.log("bytes = "+ bytes);
+	console.log("encrypted = " + encrypted);
+	console.log("decrypted = " + decrypted);
 	</script>
 </head>
 
@@ -325,33 +394,60 @@
 				<div class="panel-body">
 
 					<div class="form-group text-center">
-						<div class="form-group">
+						<div class="form-group text-left">
+							<label for="pk" >Public Key:</label>
+							<input size=60 type="text" id="pk" class="form-control" value="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApLNqYvq4umpvqDzXDqpBdkKgKxaQyXO3Dfgy4xg3f3VkrfS7tjvSpwGVfxREynulZ3HSU7MPbjM1w66PdmbWpAngEAzK4P2VPqaJ1Ni6k0+7YTBQRhWz/AQR7bEg9MCjeBPk3h+Enu4qsZ7f2Z3su1CAv1r6sdhOAKnpvZ32ZLEWsLq1iwcXS/Uygv4XM0JpB0VMvl+KUp81YAVe0PoRiYgKXXdxO2Sdm4uLg7Mls1f234DLBVW18hs0vZCpatqJ6V64FnvgHaKfvRDEyk69gGc5m+XXjCE73DIcPNOCHxBIkSZkIRskALys4S5ARvJjRKpGImUQ5mOFj5uaTrbQ8wIDAQAB" />
+						</div>
+						<div class="form-group text-left">
 							<label for="inputDecAES256">Private Key:</label>
 							<input size=60 type="text" id="private" class="form-control" value="A4FLeeaJzGm6Gb6LlkVJT1IO7hisBCJEckLFOAGK02E=" />
 						</div>
 	
-					<div class="form-group">
+						<div class="form-group text-left">
 							<label for="passwordEncAES256">Session Key:</label>
 							<input size=30 type="text" id="passwordEncAES256" class="form-control" value="" />
 						</div>  
 	
-						<div class="form-group">
+						<div class="form-group text-left">
 							<label for="inputEncAES256">Data:</label>
 							<input size=60 type="text" id="inputEncAES256" class="form-control" value="" />
 						</div>
-						<div class="form-group">
+						<div class="form-group text-left">
 							<label for="outputEncAES256">Encrypte AES:</label>
-							<input size=60 type="text" id="outputEncAES256" class="form-control" />
+							<textarea class="form-control" id="outputEncAES256" rows="3"></textarea>
 						</div>
-						<button type="button" class="btn btn-default" onclick="rsaEncrypt()"
+						<div class="form-group text-left">
+							<label for="rsaOut">Encrypt RSA:</label>
+							<textarea class="form-control" id="rsaOut" rows="3" ></textarea>
+						</div>
+						<div class="form-group text-left">
+							<label for="dataEndBackEnd">EncText (Data Send to BackEnd):</label>
+							<textarea class="form-control" id="dataEndBackEnd" rows="8" style="background-color: #82e664"></textarea>
+						</div>
+						<button type="button" class="btn btn-primary" onclick="rsaEncrypt()"
 							class="form-control">Encrypt</button>
 					</div>
+				
+				</div>
+			</div>
+			<hr><hr><hr>
+
+			<div class="panel panel-danger">
+				<div class="panel-heading">RSA Decrpt</div>
+				<div class="panel-body">
+					<div class="text-center">
+					<button type="button" class="btn btn-danger" onclick="rsaOaepDecrypt()"
+							class="form-control text-center" disabled>Decrpt</button>
+					</div>
 					<div class="form-group">
-						<label for="rsaOut">Encrypt RSA:</label>
-						<textarea class="form-control" id="rsaOut" rows="8"></textarea>
+						<label for="rsaOut_decrypt">RSA decrypt Data:</label>
+						<textarea class="form-control" id="rsaOut_decrypt" rows="8"></textarea>
 					</div>
 				</div>
 			</div>
+
+
+
 		</div>
 </body>
 

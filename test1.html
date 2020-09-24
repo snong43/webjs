@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>The script src attribute</h1>
+
+<script src="msrcrypto.js"></script>
+<script>
+var crypto = window.msCrypto | window.crypto | msrCrypto;
+let key = window.crypto.subtle.generateKey(
+  {
+    name: "AES-GCM",
+    length: 256
+  },
+  true,
+  ["encrypt", "decrypt"]
+);
+
+var data = "Hello World Hello Word Hell owrld";
+console.log("Key = "+key);
+
+console.log("===============crypto=====================");
+console.log(crypto);
+console.log("===============cipher=====================");
+var cipher = crypto.subtle.encrypt("AesGcmParams",key,data)
+
+console.log(cipher);
+var plainText = crypto.subtle.decrypt("AesGcmParams",key,plainText)
+console.log(plainText);
+
+
+
+</script>
+
+
+
+</body>
+</html>
